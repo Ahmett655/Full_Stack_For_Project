@@ -53,6 +53,7 @@ app.use("/api/roles", requireAuth, requireAdmin, roleRoutes);
 app.use("/api/menus", requireAuth, requireAdmin, menuRoutes);
 app.use("/api/permissions", requireAuth, requireAdmin, permissionRoutes);
 app.use("/api/role-permissions", requireAuth, requireAdmin, rolePermissionRoutes);
+app.use("/api/admin", requireAuth, requireAdmin, adminRoutes);
 app.use("/uploads", express.static("uploads"));
 
 

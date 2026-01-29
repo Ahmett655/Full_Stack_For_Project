@@ -1,9 +1,12 @@
 const express = require("express");
 const router = express.Router();
 
-const adminController = require("../controllers/adminController");
+const requestController = require("../controllers/requestController");
 
-router.get("/requests", adminController.listRequests);
-router.put("/requests/:id/status", adminController.setStatus);
+// ✅ List all requests (admin)
+router.get("/requests", requestController.getAllRequests);
+
+// ✅ Update status (admin)
+router.patch("/requests/:id/status", requestController.updateRequestStatus);
 
 module.exports = router;

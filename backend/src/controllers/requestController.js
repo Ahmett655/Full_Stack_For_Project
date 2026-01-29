@@ -36,7 +36,6 @@ exports.createRequest = async (req, res, next) => {
       image: imagePath,
       status: "PENDING",
       paymentStatus: "UNPAID",
-      payment: null,
     });
 
     res.status(201).json(request);
@@ -83,6 +82,36 @@ exports.getRequestById = async (req, res, next) => {
 
 /**
  * ===============================
+ * UPDATE REQUEST STATUS (ADMIN)
+ * ===============================
+ */
+exports.updateRequestStatus = async (req, res, next) => {
+  try {
+    const { status } = req.body;
+
+    if (!["PENDING", "APPROVED", "REJECTED"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    const request = await LicenseRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+
+    request.status = status;
+    await request.save();
+
+    res.json({
+      message: "Request status updated successfully",
+      request,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * ===============================
  * DOWNLOAD LICENSE CARD PDF
  * ===============================
  */
@@ -103,86 +132,75 @@ exports.downloadRequestPdf = async (req, res, next) => {
         .json({ message: "License available only after APPROVED & PAID" });
     }
 
-    // ===== PDF HEADERS =====
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
       "attachment; filename=license-card.pdf"
     );
 
-    const doc = new PDFDocument({
-      size: [350, 220],
-      margin: 12,
-    });
-
+    const doc = new PDFDocument({ size: [350, 220], margin: 12 });
     doc.pipe(res);
 
-    // ===== BACKGROUND =====
     doc.rect(0, 0, 350, 220).fill("#cfe9f6");
 
-    // ===== HEADER =====
-    doc
-      .fillColor("#003366")
-      .fontSize(13)
+    doc.fillColor("#003366").fontSize(13)
       .text("THE FEDERAL REPUBLIC OF SOMALIA", 20, 12);
 
-    doc
-      .fontSize(11)
-      .text("DRIVING LICENCE", 20, 30);
+    doc.fontSize(11).text("DRIVING LICENCE", 20, 30);
 
-    // ===== PHOTO =====
     if (r.image) {
       const imgPath = path.join(process.cwd(), r.image.replace("/uploads/", "uploads/"));
       if (fs.existsSync(imgPath)) {
         doc.image(imgPath, 20, 55, { width: 70, height: 90 });
-      } else {
-        doc.rect(20, 55, 70, 90).stroke();
-        doc.fontSize(8).text("No Image", 35, 95);
       }
-    } else {
-      doc.rect(20, 55, 70, 90).stroke();
-      doc.fontSize(8).text("No Image", 35, 95);
     }
 
-    // ===== DETAILS =====
     doc.fillColor("#000").fontSize(9);
-
     let y = 55;
     const x = 110;
 
-    doc.text("Names", x, y);
-    doc.text(r.fullName.toUpperCase(), x, y + 12);
-
+    doc.text("Names", x, y).text(r.fullName, x, y + 12);
     y += 28;
-    doc.text("Date of Birth", x, y);
-    doc.text(String(r.yearOfBirth), x, y + 12);
-
+    doc.text("Date of Birth", x, y).text(String(r.yearOfBirth), x, y + 12);
     y += 28;
-    doc.text("Place of Birth", x, y);
-    doc.text(r.placeOfBirth, x, y + 12);
-
+    doc.text("Place of Birth", x, y).text(r.placeOfBirth, x, y + 12);
     y += 28;
-    doc.text("Vehicle", x, y);
-    doc.text(r.vehicleName, x, y + 12);
-
-    y += 28;
-    doc.text("Category", x, y);
-    doc.text(r.vehicleType || "A1", x, y + 12);
-
-    // ===== FOOTER =====
-    doc
-      .fontSize(8)
-      .text("Issued by Ministry of Transport", 20, 190);
-
-    doc
-      .fontSize(7)
-      .text(
-        `License No: ${r._id.toString().slice(-8)}`,
-        220,
-        190
-      );
+    doc.text("Vehicle", x, y).text(r.vehicleName, x, y + 12);
 
     doc.end();
+  } catch (err) {
+    next(err);
+  }
+};
+// ✅ ADMIN: Get all requests
+exports.getAllRequests = async (req, res, next) => {
+  try {
+    const list = await LicenseRequest.find()
+      .populate("userId", "username email")
+      .sort({ createdAt: -1 });
+
+    res.json(list);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ✅ ADMIN: Update request status
+exports.updateRequestStatus = async (req, res, next) => {
+  try {
+    const { status } = req.body;
+
+    if (!["PENDING", "APPROVED", "REJECTED"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    const request = await LicenseRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ message: "Request not found" });
+
+    request.status = status;
+    await request.save();
+
+    res.json({ message: "Status updated", request });
   } catch (err) {
     next(err);
   }
