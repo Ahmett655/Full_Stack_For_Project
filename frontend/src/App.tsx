@@ -11,7 +11,7 @@ import AdminDashboardPage from "./pages/AdminDashboardPage";
 import UserDashboardHomePage from "./pages/UserDashboardHomePage";
 import UserRequestNewPage from "./pages/UserRequestNewPage";
 import UserRequestsPage from "./pages/UserRequestsPage";
-
+import LicenseCardPreviewPage from "./pages/LicenseCardPreviewPage";
 import PaymentPage from "./features/PaymentPage";
 
 export default function App() {
@@ -21,6 +21,8 @@ export default function App() {
 
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      // Example
+      <Route path="/app/user/requests/:id/card" element={<LicenseCardPreviewPage />} />
 
       {/* USER */}
       <Route
