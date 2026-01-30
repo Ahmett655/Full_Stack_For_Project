@@ -98,7 +98,7 @@ export default function PaymentFormPage() {
       // POST /api/payments/:requestId  body: { number, service, amount }
       const res = await api.post<PayRes>(`/api/payments/${requestId}`, {
         number: cleanNumber,
-        service,
+        provider:service,
         amount: amt,
       });
 
