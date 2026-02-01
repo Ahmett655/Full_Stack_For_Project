@@ -1,57 +1,36 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-type Role = "user" | "admin";
+type User = { _id: string; email: string; name?: string; role: "user" | "admin" };
 
-export type AuthUser = {
-  _id: string;
-  email: string;
-  name?: string;
-  role: Role;
-};
-
-type ThemeMode = "dark" | "light";
-
-type AuthContextType = {
+type AuthCtx = {
   token: string | null;
-  user: AuthUser | null;
-
-  // ✅ auth actions
-  setAuth: (token: string, user: AuthUser) => void;
+  user: User | null;
+  setAuth: (token: string, user: User) => void;
   logout: () => void;
-
-  // ✅ theme actions (THIS fixes your line 13 error)
-  theme: ThemeMode;
-  toggleTheme: () => void;
-  setTheme: (t: ThemeMode) => void;
+  isAuthed: boolean;
 };
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const Ctx = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem("token"));
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    const raw = localStorage.getItem("user");
-    return raw ? (JSON.parse(raw) as AuthUser) : null;
-  });
+  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
 
-  const [theme, setThemeState] = useState<ThemeMode>(() => {
-    const saved = localStorage.getItem("theme") as ThemeMode | null;
-    return saved === "light" || saved === "dark" ? saved : "dark";
-  });
-
-  // keep html theme attribute updated (for CSS)
+  // ✅ load from localStorage on refresh
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("theme", theme);
-  }, [theme]);
+    const t = localStorage.getItem("token");
+    const u = localStorage.getItem("user");
+    if (t && u) {
+      setToken(t);
+      try {
+        setUser(JSON.parse(u));
+      } catch {
+        setUser(null);
+      }
+    }
+  }, []);
 
-  const setTheme = (t: ThemeMode) => setThemeState(t);
-
-  const toggleTheme = () => {
-    setThemeState((prev) => (prev === "dark" ? "light" : "dark"));
-  };
-
-  const setAuth = (t: string, u: AuthUser) => {
+  const setAuth = (t: string, u: User) => {
     setToken(t);
     setUser(u);
     localStorage.setItem("token", t);
@@ -63,27 +42,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    // theme ha tirtirin, user experience fiican
   };
 
-  const value = useMemo<AuthContextType>(
-    () => ({
-      token,
-      user,
-      setAuth,
-      logout,
-      theme,
-      toggleTheme,
-      setTheme,
-    }),
-    [token, user, theme]
+  const value = useMemo(
+    () => ({ token, user, setAuth, logout, isAuthed: !!token }),
+    [token, user]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  const v = useContext(Ctx);
+  if (!v) throw new Error("useAuth must be used inside <AuthProvider>");
+  return v;
 }

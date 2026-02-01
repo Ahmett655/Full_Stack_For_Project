@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api } from "../lib/api";
+import { api } from "../lib/api"; // ✅ FIX: use named export
 
 type LoginResponse = {
   token: string;
@@ -22,10 +22,7 @@ export default function LoginPage() {
       ? "radial-gradient(900px 500px at 15% 10%, rgba(34,197,94,0.18), transparent 60%), radial-gradient(900px 500px at 85% 30%, rgba(59,130,246,0.16), transparent 60%), linear-gradient(180deg, #0b1220, #0a162a)"
       : "radial-gradient(900px 500px at 15% 10%, rgba(34,197,94,0.16), transparent 60%), radial-gradient(900px 500px at 85% 30%, rgba(59,130,246,0.14), transparent 60%), linear-gradient(180deg, #eef6ff, #e6f2ff)";
 
-    const card = dark
-      ? "rgba(15,23,42,0.62)"
-      : "rgba(255,255,255,0.72)";
-
+    const card = dark ? "rgba(15,23,42,0.62)" : "rgba(255,255,255,0.72)";
     const border = dark ? "rgba(148,163,184,0.18)" : "rgba(15,23,42,0.12)";
     const text = dark ? "#e5e7eb" : "#0f172a";
     const sub = dark ? "rgba(229,231,235,0.75)" : "rgba(15,23,42,0.65)";
@@ -43,17 +40,13 @@ export default function LoginPage() {
         overflow: "hidden",
       } as React.CSSProperties,
 
-      wrap: {
-        width: "min(420px, 100%)",
-        position: "relative",
-      } as React.CSSProperties,
+      wrap: { width: "min(420px, 100%)", position: "relative" } as React.CSSProperties,
 
       glowTop: {
         position: "absolute",
         inset: "-120px -120px auto -120px",
         height: 180,
-        background:
-          "radial-gradient(circle at 50% 50%, rgba(34,197,94,0.35), transparent 65%)",
+        background: "radial-gradient(circle at 50% 50%, rgba(34,197,94,0.35), transparent 65%)",
         filter: "blur(16px)",
         opacity: dark ? 1 : 0.75,
         pointerEvents: "none",
@@ -64,8 +57,7 @@ export default function LoginPage() {
         inset: "-100px -140px auto auto",
         width: 220,
         height: 220,
-        background:
-          "radial-gradient(circle at 40% 40%, rgba(59,130,246,0.30), transparent 65%)",
+        background: "radial-gradient(circle at 40% 40%, rgba(59,130,246,0.30), transparent 65%)",
         filter: "blur(18px)",
         opacity: dark ? 1 : 0.7,
         pointerEvents: "none",
@@ -77,9 +69,7 @@ export default function LoginPage() {
         border: `1px solid ${border}`,
         background: card,
         backdropFilter: "blur(14px)",
-        boxShadow: dark
-          ? "0 18px 60px rgba(0,0,0,0.45)"
-          : "0 18px 60px rgba(2,6,23,0.18)",
+        boxShadow: dark ? "0 18px 60px rgba(0,0,0,0.45)" : "0 18px 60px rgba(2,6,23,0.18)",
         overflow: "hidden",
       } as React.CSSProperties,
 
@@ -101,12 +91,7 @@ export default function LoginPage() {
         textShadow: dark ? "0 2px 0 rgba(0,0,0,0.35)" : "none",
       } as React.CSSProperties,
 
-      sub: {
-        margin: "6px 0 0",
-        fontSize: 12.5,
-        color: sub,
-        fontWeight: 600,
-      } as React.CSSProperties,
+      sub: { margin: "6px 0 0", fontSize: 12.5, color: sub, fontWeight: 600 } as React.CSSProperties,
 
       toggle: {
         border: `1px solid ${border}`,
@@ -182,17 +167,13 @@ export default function LoginPage() {
         fontWeight: 900,
         fontSize: 15,
         color: "#06200f",
-        background:
-          "linear-gradient(90deg, rgba(34,197,94,1), rgba(16,185,129,1))",
+        background: "linear-gradient(90deg, rgba(34,197,94,1), rgba(16,185,129,1))",
         boxShadow: "0 10px 26px rgba(34,197,94,0.25)",
         transform: "translateY(0)",
         transition: "transform 0.15s ease, filter 0.15s ease",
       } as React.CSSProperties,
 
-      btnDisabled: {
-        filter: "grayscale(0.35) brightness(0.85)",
-        cursor: "not-allowed",
-      } as React.CSSProperties,
+      btnDisabled: { filter: "grayscale(0.35) brightness(0.85)", cursor: "not-allowed" } as React.CSSProperties,
 
       secondaryBtn: {
         marginTop: 12,
@@ -218,30 +199,15 @@ export default function LoginPage() {
         minHeight: 18,
       } as React.CSSProperties,
 
-      footer: {
-        padding: "0 22px 20px",
-        color: sub,
-        fontSize: 12,
-        fontWeight: 650,
-        textAlign: "center",
-      } as React.CSSProperties,
+      footer: { padding: "0 22px 20px", color: sub, fontSize: 12, fontWeight: 650, textAlign: "center" } as React.CSSProperties,
 
-      divider: {
-        height: 1,
-        background: border,
-        marginTop: 16,
-      } as React.CSSProperties,
+      divider: { height: 1, background: border, marginTop: 16 } as React.CSSProperties,
 
       keyframes: `
         @keyframes floaty {
           0%   { transform: translateY(0px); }
           50%  { transform: translateY(-4px); }
           100% { transform: translateY(0px); }
-        }
-        @keyframes shimmer {
-          0% { transform: translateX(-120%); opacity: .0; }
-          40% { opacity: .35; }
-          100% { transform: translateX(120%); opacity: 0; }
         }
       `,
     };
@@ -289,6 +255,7 @@ export default function LoginPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setMsg("");
+
     if (!email.trim() || !password.trim()) {
       setMsg("Please enter email and password.");
       return;
@@ -304,9 +271,13 @@ export default function LoginPage() {
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
-      // redirect by role
-      if (res.data.user.role === "admin") nav("/app/admin/dashboard");
-      else nav("/app/user/dashboard");
+      // ✅ FIX: replace navigation (prevents back-to-login)
+      nav(
+        res.data.user.role === "admin"
+          ? "/app/admin/dashboard"
+          : "/app/user/dashboard",
+        { replace: true }
+      );
     } catch (err: any) {
       const m =
         err?.response?.data?.message ||
@@ -333,7 +304,7 @@ export default function LoginPage() {
               <p style={S.sub}>Ministry of Transport</p>
             </div>
 
-            <button style={S.toggle} onClick={() => setDark((v) => !v)}>
+            <button style={S.toggle} onClick={() => setDark((v) => !v)} type="button">
               <span style={{ display: "inline-flex" }}>{dark ? "🌙" : "☀️"}</span>
               {dark ? "Dark" : "Light"}
             </button>
@@ -365,7 +336,6 @@ export default function LoginPage() {
                 />
               </div>
 
-              {/* ✅ Forgot + Register links (MEESHAAN AYUU KU YAAL) */}
               <div style={S.rowLinks}>
                 <Link to="/forgot-password" style={S.link}>
                   Forgot password?
@@ -378,18 +348,13 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                style={{
-                  ...S.btn,
-                  ...(loading ? S.btnDisabled : {}),
-                }}
+                style={{ ...S.btn, ...(loading ? S.btnDisabled : {}) }}
                 disabled={loading}
                 onMouseDown={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.transform =
-                    "translateY(1px)";
+                  (e.currentTarget as HTMLButtonElement).style.transform = "translateY(1px)";
                 }}
                 onMouseUp={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.transform =
-                    "translateY(0px)";
+                  (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0px)";
                 }}
               >
                 {loading ? "Logging in..." : "Login"}
@@ -407,9 +372,7 @@ export default function LoginPage() {
             <div style={S.divider} />
           </div>
 
-          <div style={S.footer}>
-            By continuing, you agree to system policies.
-          </div>
+          <div style={S.footer}>By continuing, you agree to system policies.</div>
         </div>
       </div>
     </div>
