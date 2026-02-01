@@ -94,7 +94,7 @@ export default function LicenseCardPreviewPage() {
 
       const a = document.createElement("a");
       a.href = url;
-      a.download = `license-card-${licenseNo}.pdf`;
+      a.download = `license-card-${licenseNo}-${Date.now()}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();

@@ -1,80 +1,136 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { api } from "../lib/api";
-import { useAuth } from "../context/AuthProvider";
-
-type LoginRes = {
-  token: string;
-  user: { _id: string; email: string; name?: string; role: "user" | "admin" };
-};
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function LoginPage() {
-  const nav = useNavigate();
-  const { setAuth, toggleTheme, theme } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [err, setErr] = useState("");
-  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const submit = async (e: React.FormEvent) => {
+  const [dark, setDark] = useState(() => {
+    return localStorage.getItem("theme") === "dark";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }, [dark]);
+
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    setErr("");
-    setLoading(true);
-    try {
-      const res = await api.post<LoginRes>("/api/auth/login", { email, password });
-      setAuth(res.data.token, res.data.user);
-      nav(res.data.user.role === "admin" ? "/app/admin/dashboard" : "/app/user/dashboard");
-    } catch (e: any) {
-      setErr(e?.response?.data?.message || "Login failed");
-    } finally {
-      setLoading(false);
-    }
+    // Halkan API login ayaad ku xireysaa marka dambe
+    navigate("/app/user/dashboard");
+  };
+
+  const S: Record<string, React.CSSProperties> = {
+    page: {
+      minHeight: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: dark
+        ? "radial-gradient(circle at top,#16a34a33,#020617)"
+        : "radial-gradient(circle at top,#3b82f633,#f8fafc)",
+      padding: 16,
+      transition: "0.4s",
+    },
+    card: {
+      width: "100%",
+      maxWidth: 380,
+      padding: 28,
+      borderRadius: 20,
+      background: dark ? "rgba(255,255,255,0.08)" : "#ffffff",
+      backdropFilter: "blur(14px)",
+      boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+    },
+    title: {
+      textAlign: "center",
+      fontSize: 22,
+      fontWeight: 900,
+      color: dark ? "#fff" : "#0f172a",
+    },
+    sub: {
+      textAlign: "center",
+      fontSize: 13,
+      marginBottom: 22,
+      color: dark ? "#cbd5f5" : "#475569",
+    },
+    field: {
+      position: "relative",
+      marginBottom: 14,
+    },
+    icon: {
+      position: "absolute",
+      left: 12,
+      top: "50%",
+      transform: "translateY(-50%)",
+      fontSize: 16,
+      opacity: 0.7,
+    },
+    input: {
+      width: "100%",
+      padding: "14px 14px 14px 42px",
+      borderRadius: 12,
+      border: "none",
+      outline: "none",
+      fontSize: 14,
+    },
+    btn: {
+      width: "100%",
+      padding: 14,
+      borderRadius: 12,
+      border: "none",
+      background: "linear-gradient(135deg,#22c55e,#16a34a)",
+      color: "#fff",
+      fontWeight: 900,
+      fontSize: 15,
+      cursor: "pointer",
+      marginTop: 10,
+    },
+    toggle: {
+      marginTop: 16,
+      textAlign: "center",
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 800,
+      color: dark ? "#a7f3d0" : "#2563eb",
+    },
   };
 
   return (
-    <div className="auth-wrap">
-      <div className="auth-card glass">
-        <div className="auth-left">
-          <div className="top-actions" style={{ justifyContent: "flex-end" }}>
-            <button className="btn" onClick={toggleTheme}>
-              {theme === "dark" ? "Light Mode" : "Dark Mode"}
-            </button>
+    <div style={S.page}>
+      <div style={S.card}>
+        <h1 style={S.title}>Driving License System</h1>
+        <p style={S.sub}>Ministry of Transport</p>
+
+        <form onSubmit={submit}>
+          <div style={S.field}>
+            <span style={S.icon}>👤</span>
+            <input
+              style={S.input}
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
           </div>
-          <h1>Welcome Back</h1>
-          <p>
-            Login to manage your license requests, payments, and download your card after approval.
-          </p>
-          <div className="hr"></div>
-          <p className="muted">
-            Tip: Use your registered email & password. Admin accounts will be redirected to admin dashboard.
-          </p>
-        </div>
 
-        <div className="auth-right">
-          <h2 style={{ marginTop: 0 }}>Login</h2>
+          <div style={S.field}>
+            <span style={S.icon}>🔒</span>
+            <input
+              style={S.input}
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
 
-          {err && <div className="alert alert-error">{err}</div>}
+          <button style={S.btn}>Login</button>
+        </form>
 
-          <form className="form" onSubmit={submit}>
-            <div className="field">
-              <label>Email</label>
-              <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
-            </div>
-
-            <div className="field">
-              <label>Password</label>
-              <input className="input" value={password} onChange={(e) => setPassword(e.target.value)} type="password" required />
-            </div>
-
-            <button className="btn btn-primary" disabled={loading} type="submit">
-              {loading ? (<><span className="loader" /> Logging in...</>) : "Login"}
-            </button>
-
-            <div className="auth-links">
-              <span className="muted">Don’t have an account?</span>
-              <Link className="link" to="/register">Register</Link>
-            </div>
-          </form>
+        <div style={S.toggle} onClick={() => setDark(!dark)}>
+          {dark ? "☀ Light Mode" : "🌙 Dark Mode"}
         </div>
       </div>
     </div>
