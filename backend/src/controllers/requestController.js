@@ -115,7 +115,9 @@ exports.updateRequestStatus = async (req, res, next) => {
  * DOWNLOAD LICENSE CARD PDF
  * ===============================
  */
+
 exports.downloadRequestPdf = async (req, res, next) => {
+  console.log("✅ PDF CONTROLLER RUNNING (NEW) ✅");
   try {
     const { id } = req.params;
 
