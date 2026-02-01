@@ -1,14 +1,16 @@
 import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api } from "../lib/api"; // ✅ FIX: use named export
+import { api } from "../lib/api"; // named export
+import { useAuth } from "../context/AuthProvider"; // ✅ muhiim
 
 type LoginResponse = {
   token: string;
-  user: { _id: string; name: string; email: string; role: string };
+  user: { _id: string; name: string; email: string; role: "user" | "admin" };
 };
 
 export default function LoginPage() {
   const nav = useNavigate();
+  const { login } = useAuth(); // ✅ use context login (updates state + localStorage)
 
   const [dark, setDark] = useState(true);
   const [email, setEmail] = useState("");
@@ -268,21 +270,15 @@ export default function LoginPage() {
         password,
       });
 
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
+      // ✅ IMPORTANT: update AuthProvider state
+      login(res.data.token, res.data.user);
 
-      // ✅ FIX: replace navigation (prevents back-to-login)
-      nav(
-        res.data.user.role === "admin"
-          ? "/app/admin/dashboard"
-          : "/app/user/dashboard",
-        { replace: true }
-      );
+      // ✅ redirect (replace)
+      nav(res.data.user.role === "admin" ? "/app/admin/dashboard" : "/app/user/dashboard", {
+        replace: true,
+      });
     } catch (err: any) {
-      const m =
-        err?.response?.data?.message ||
-        err?.message ||
-        "Login failed. Please try again.";
+      const m = err?.response?.data?.message || err?.message || "Login failed. Please try again.";
       setMsg(m);
     } finally {
       setLoading(false);
@@ -346,17 +342,7 @@ export default function LoginPage() {
                 </Link>
               </div>
 
-              <button
-                type="submit"
-                style={{ ...S.btn, ...(loading ? S.btnDisabled : {}) }}
-                disabled={loading}
-                onMouseDown={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.transform = "translateY(1px)";
-                }}
-                onMouseUp={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0px)";
-                }}
-              >
+              <button type="submit" style={{ ...S.btn, ...(loading ? S.btnDisabled : {}) }} disabled={loading}>
                 {loading ? "Logging in..." : "Login"}
               </button>
 
