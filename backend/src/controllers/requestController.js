@@ -10,17 +10,13 @@ const fs = require("fs");
  */
 exports.createRequest = async (req, res, next) => {
   try {
-    const {
-      fullName,
-      placeOfBirth,
-      yearOfBirth,
-      vehicleName,
-      vehicleType,
-    } = req.body;
+    const { fullName, placeOfBirth, yearOfBirth, vehicleName, vehicleType } =
+      req.body;
 
     if (!fullName || !placeOfBirth || !yearOfBirth || !vehicleName) {
       return res.status(400).json({
-        message: "fullName, placeOfBirth, yearOfBirth, vehicleName are required",
+        message:
+          "fullName, placeOfBirth, yearOfBirth, vehicleName are required",
       });
     }
 
@@ -51,8 +47,9 @@ exports.createRequest = async (req, res, next) => {
  */
 exports.getMyRequests = async (req, res, next) => {
   try {
-    const list = await LicenseRequest.find({ userId: req.user._id })
-      .sort({ createdAt: -1 });
+    const list = await LicenseRequest.find({ userId: req.user._id }).sort({
+      createdAt: -1,
+    });
 
     res.json(list);
   } catch (err) {
@@ -62,7 +59,7 @@ exports.getMyRequests = async (req, res, next) => {
 
 /**
  * ===============================
- * GET SINGLE REQUEST
+ * GET SINGLE REQUEST (USER)
  * ===============================
  */
 exports.getRequestById = async (req, res, next) => {
@@ -82,7 +79,25 @@ exports.getRequestById = async (req, res, next) => {
 
 /**
  * ===============================
- * UPDATE REQUEST STATUS (ADMIN)
+ * ADMIN: GET ALL REQUESTS
+ * ===============================
+ */
+exports.getAllRequests = async (req, res, next) => {
+  try {
+    const list = await LicenseRequest.find()
+      .populate("userId", "username email")
+      .sort({ createdAt: -1 });
+
+    res.json(list);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * ===============================
+ * ADMIN: UPDATE REQUEST STATUS
+ * (HAL MAR KALIYA)
  * ===============================
  */
 exports.updateRequestStatus = async (req, res, next) => {
@@ -94,17 +109,12 @@ exports.updateRequestStatus = async (req, res, next) => {
     }
 
     const request = await LicenseRequest.findById(req.params.id);
-    if (!request) {
-      return res.status(404).json({ message: "Request not found" });
-    }
+    if (!request) return res.status(404).json({ message: "Request not found" });
 
     request.status = status;
     await request.save();
 
-    res.json({
-      message: "Request status updated successfully",
-      request,
-    });
+    res.json({ message: "Status updated", request });
   } catch (err) {
     next(err);
   }
@@ -115,8 +125,8 @@ exports.updateRequestStatus = async (req, res, next) => {
  * DOWNLOAD LICENSE CARD PDF
  * ===============================
  */
-
 exports.downloadRequestPdf = async (req, res, next) => {
+  let doc; // si aan u xakameyno haddii error dhaco
   try {
     const { id } = req.params;
 
@@ -137,24 +147,29 @@ exports.downloadRequestPdf = async (req, res, next) => {
 
     // ===== PDF HEADERS =====
     res.setHeader("Content-Type", "application/pdf");
-    // make filename unique to avoid old file confusion
     res.setHeader(
       "Content-Disposition",
       `attachment; filename=license-card-${r._id.toString().slice(-8)}-${Date.now()}.pdf`
     );
 
-    // Card-like size (landscape)
+    // Card size (landscape)
     const W = 620;
     const H = 360;
 
-    const doc = new PDFDocument({ size: [W, H], margin: 0 });
+    doc = new PDFDocument({ size: [W, H], margin: 0 });
+
+    // haddii PDFKit error dhaco → next(err)
+    doc.on("error", (e) => next(e));
+
+    // pipe response
     doc.pipe(res);
 
     // Helpers
-    const safe = (v) => (v === null || v === undefined || v === "" ? "—" : String(v));
+    const safe = (v) =>
+      v === null || v === undefined || v === "" ? "—" : String(v);
     const licenseNo = r._id.toString().slice(-8).toUpperCase();
 
-    // ===== BACKGROUND (soft card) =====
+    // ===== BACKGROUND =====
     doc.rect(0, 0, W, H).fill("#EAF6FF");
     doc.save();
     doc.fillColor("#CFE9F6").rect(0, H * 0.45, W, H * 0.25).fill();
@@ -171,27 +186,24 @@ exports.downloadRequestPdf = async (req, res, next) => {
     doc.roundedRect(14, 14, W - 28, H - 28, 18).lineWidth(1).stroke("#B8D7EA");
     doc.restore();
 
-    // ===== HEADER: emblem + titles =====
+    // ===== HEADER =====
     const pad = 26;
     const headerY = 28;
 
     // emblem box
     doc.save();
-    doc.roundedRect(pad, headerY, 46, 46, 14).fillAndStroke("#EAF2FF", "#BBD2F3");
+    doc
+      .roundedRect(pad, headerY, 46, 46, 14)
+      .fillAndStroke("#EAF2FF", "#BBD2F3");
     doc.restore();
 
-    // simple emblem icon
+    /**
+     * ✅ FIX: PDFKit MA LAHA curveTo()
+     * Emblem fudud oo safe ah:
+     */
     doc.save();
-    doc.lineWidth(2).strokeColor("#1E3A8A");
-    doc
-      .moveTo(pad + 23, headerY + 10)
-      .lineTo(pad + 36, headerY + 17)
-      .lineTo(pad + 36, headerY + 30)
-      .curveTo(pad + 36, headerY + 40, pad + 23, headerY + 45, pad + 23, headerY + 45)
-      .curveTo(pad + 10, headerY + 40, pad + 10, headerY + 30, pad + 10, headerY + 30)
-      .lineTo(pad + 10, headerY + 17)
-      .closePath()
-      .stroke();
+    doc.fillColor("#1E3A8A");
+    doc.circle(pad + 23, headerY + 23, 8).fill();
     doc.restore();
 
     doc
@@ -234,7 +246,9 @@ exports.downloadRequestPdf = async (req, res, next) => {
     const badgeY = headerY + 10;
 
     doc.save();
-    doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 13).fillAndStroke(badgeFill, badgeStroke);
+    doc
+      .roundedRect(badgeX, badgeY, badgeW, badgeH, 13)
+      .fillAndStroke(badgeFill, badgeStroke);
     doc
       .fillColor(badgeTextColor)
       .font("Helvetica-Bold")
@@ -254,15 +268,20 @@ exports.downloadRequestPdf = async (req, res, next) => {
     // license no pill
     const pillText = `License No: ${licenseNo}`;
     doc.save();
-    doc.roundedRect(W - pad - 200, titleY - 2, 200, 26, 12).fillAndStroke("#FFFFFF", "#C7D2FE");
+    doc
+      .roundedRect(W - pad - 200, titleY - 2, 200, 26, 12)
+      .fillAndStroke("#FFFFFF", "#C7D2FE");
     doc
       .fillColor("#0F172A")
       .font("Helvetica-Bold")
       .fontSize(10)
-      .text(pillText, W - pad - 200, titleY + 6, { width: 200, align: "center" });
+      .text(pillText, W - pad - 200, titleY + 6, {
+        width: 200,
+        align: "center",
+      });
     doc.restore();
 
-    // ===== MAIN LAYOUT =====
+    // ===== MAIN =====
     const mainY = 122;
     const leftX = pad;
     const photoW = 170;
@@ -270,14 +289,18 @@ exports.downloadRequestPdf = async (req, res, next) => {
 
     // Photo frame
     doc.save();
-    doc.roundedRect(leftX, mainY, photoW, photoH, 16).fillAndStroke("#FFFFFF", "#B8D7EA");
+    doc
+      .roundedRect(leftX, mainY, photoW, photoH, 16)
+      .fillAndStroke("#FFFFFF", "#B8D7EA");
     doc.restore();
 
     // Put image if exists
     if (r.image) {
-      const imgPath = path.join(process.cwd(), r.image.replace("/uploads/", "uploads/"));
+      // r.image like "/uploads/xxx.jpg"
+      const filename = path.basename(r.image);
+      const imgPath = path.join(process.cwd(), "uploads", filename);
+
       if (fs.existsSync(imgPath)) {
-        // clip inside rounded rect
         doc.save();
         doc.roundedRect(leftX, mainY, photoW, photoH, 16).clip();
         doc.image(imgPath, leftX, mainY, { width: photoW, height: photoH });
@@ -287,14 +310,20 @@ exports.downloadRequestPdf = async (req, res, next) => {
           .fillColor("#64748B")
           .font("Helvetica-Bold")
           .fontSize(11)
-          .text("PHOTO", leftX, mainY + photoH / 2 - 6, { width: photoW, align: "center" });
+          .text("PHOTO", leftX, mainY + photoH / 2 - 6, {
+            width: photoW,
+            align: "center",
+          });
       }
     } else {
       doc
         .fillColor("#64748B")
         .font("Helvetica-Bold")
         .fontSize(11)
-        .text("PHOTO", leftX, mainY + photoH / 2 - 6, { width: photoW, align: "center" });
+        .text("PHOTO", leftX, mainY + photoH / 2 - 6, {
+          width: photoW,
+          align: "center",
+        });
     }
 
     // Details box
@@ -303,7 +332,9 @@ exports.downloadRequestPdf = async (req, res, next) => {
     const detailsH = photoH;
 
     doc.save();
-    doc.roundedRect(detailsX, mainY, detailsW, detailsH, 16).fillAndStroke("#FFFFFF", "#B8D7EA");
+    doc
+      .roundedRect(detailsX, mainY, detailsW, detailsH, 16)
+      .fillAndStroke("#FFFFFF", "#B8D7EA");
     doc.restore();
 
     // detail rows
@@ -332,12 +363,14 @@ exports.downloadRequestPdf = async (req, res, next) => {
         .fontSize(11)
         .text(String(row[1]), valX, ry);
 
-      // dashed divider except last
       if (i !== rows.length - 1) {
         const lineY = ry + 22;
         doc.save();
         doc.strokeColor("#CBD5E1").dash(3, { space: 3 });
-        doc.moveTo(detailsX + 14, lineY).lineTo(detailsX + detailsW - 14, lineY).stroke();
+        doc
+          .moveTo(detailsX + 14, lineY)
+          .lineTo(detailsX + detailsW - 14, lineY)
+          .stroke();
         doc.undash();
         doc.restore();
       }
@@ -363,49 +396,25 @@ exports.downloadRequestPdf = async (req, res, next) => {
     // QR placeholder
     const qrSize = 74;
     doc.save();
-    doc.roundedRect(W - pad - qrSize, footY - 6, qrSize, qrSize, 14).fillAndStroke("#FFFFFF", "#B8D7EA");
+    doc
+      .roundedRect(W - pad - qrSize, footY - 6, qrSize, qrSize, 14)
+      .fillAndStroke("#FFFFFF", "#B8D7EA");
     doc
       .fillColor("#94A3B8")
       .font("Helvetica-Bold")
       .fontSize(9)
-      .text("QR\nVERIFY", W - pad - qrSize, footY + 18, { width: qrSize, align: "center" });
+      .text("QR\nVERIFY", W - pad - qrSize, footY + 18, {
+        width: qrSize,
+        align: "center",
+      });
     doc.restore();
 
     doc.end();
   } catch (err) {
-    next(err);
-  }
-};
-// ✅ ADMIN: Get all requests
-exports.getAllRequests = async (req, res, next) => {
-  try {
-    const list = await LicenseRequest.find()
-      .populate("userId", "username email")
-      .sort({ createdAt: -1 });
-
-    res.json(list);
-  } catch (err) {
-    next(err);
-  }
-};
-
-// ✅ ADMIN: Update request status
-exports.updateRequestStatus = async (req, res, next) => {
-  try {
-    const { status } = req.body;
-
-    if (!["PENDING", "APPROVED", "REJECTED"].includes(status)) {
-      return res.status(400).json({ message: "Invalid status" });
-    }
-
-    const request = await LicenseRequest.findById(req.params.id);
-    if (!request) return res.status(404).json({ message: "Request not found" });
-
-    request.status = status;
-    await request.save();
-
-    res.json({ message: "Status updated", request });
-  } catch (err) {
+    // haddii response la bilaabay, ha isku dayin json
+    try {
+      if (doc) doc.end();
+    } catch {}
     next(err);
   }
 };
