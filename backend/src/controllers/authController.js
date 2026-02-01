@@ -1,73 +1,40 @@
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const User = require("../models/user");
 
-function signToken(user) {
-  return jwt.sign(
-    { id: user._id, role: user.role },
-    process.env.JWT_SECRET || "secret",
-    { expiresIn: "7d" }
-  );
-}
+// FORGOT PASSWORD
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) return res.json({ message: "If email exists, reset link sent" });
 
-exports.register = async (req, res, next) => {
-  try {
-    // frontend sends: { name, email, password }
-    const { name, email, password } = req.body;
+  const token = crypto.randomBytes(32).toString("hex");
+  user.resetToken = token;
+  user.resetTokenExpire = Date.now() + 1000 * 60 * 15; // 15 min
+  await user.save();
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: "name, email, password are required" });
-    }
+  const link = `${process.env.FRONTEND_URL}/reset-password/${token}`;
 
-    const exists = await User.findOne({ email: String(email).toLowerCase() });
-    if (exists) return res.status(400).json({ message: "Email already exists" });
+  console.log("RESET LINK:", link); // hadda email ma dirayno
 
-    const hash = await bcrypt.hash(password, 10);
-
-    // ✅ User created from frontend = role user
-    const user = await User.create({
-      name,
-      email: String(email).toLowerCase(),
-      password: hash,
-      role: "user",
-    });
-
-    // (optional) auto-login
-    const token = signToken(user);
-
-    res.status(201).json({
-      token,
-      user: { _id: user._id, name: user.name, email: user.email, role: user.role },
-    });
-  } catch (err) {
-    next(err);
-  }
+  res.json({ message: "Reset link sent" });
 };
 
-exports.login = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password)
-      return res.status(400).json({ message: "email, password are required" });
+// RESET PASSWORD
+exports.resetPassword = async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
 
-    const user = await User.findOne({ email: String(email).toLowerCase() });
-    if (!user) return res.status(400).json({ message: "Invalid email or password" });
+  const user = await User.findOne({
+    resetToken: token,
+    resetTokenExpire: { $gt: Date.now() },
+  });
 
-    const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return res.status(400).json({ message: "Invalid email or password" });
+  if (!user) return res.status(400).json({ message: "Invalid or expired token" });
 
-    const token = signToken(user);
+  user.password = await bcrypt.hash(password, 10);
+  user.resetToken = undefined;
+  user.resetTokenExpire = undefined;
+  await user.save();
 
-    res.json({
-      token,
-      user: { _id: user._id, name: user.name, email: user.email, role: user.role },
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-exports.me = async (req, res) => {
-  // requireAuth already attached req.user
-  res.json(req.user);
+  res.json({ message: "Password updated" });
 };
