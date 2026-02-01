@@ -117,7 +117,6 @@ exports.updateRequestStatus = async (req, res, next) => {
  */
 
 exports.downloadRequestPdf = async (req, res, next) => {
-  console.log("✅ PDF CONTROLLER RUNNING (NEW) ✅");
   try {
     const { id } = req.params;
 
@@ -134,40 +133,243 @@ exports.downloadRequestPdf = async (req, res, next) => {
         .json({ message: "License available only after APPROVED & PAID" });
     }
 
+    console.log("✅ PDF CONTROLLER RUNNING (NEW) ✅");
+
+    // ===== PDF HEADERS =====
     res.setHeader("Content-Type", "application/pdf");
+    // make filename unique to avoid old file confusion
     res.setHeader(
       "Content-Disposition",
-      "attachment; filename=license-card.pdf"
+      `attachment; filename=license-card-${r._id.toString().slice(-8)}-${Date.now()}.pdf`
     );
 
-    const doc = new PDFDocument({ size: [350, 220], margin: 12 });
+    // Card-like size (landscape)
+    const W = 620;
+    const H = 360;
+
+    const doc = new PDFDocument({ size: [W, H], margin: 0 });
     doc.pipe(res);
 
-    doc.rect(0, 0, 350, 220).fill("#cfe9f6");
+    // Helpers
+    const safe = (v) => (v === null || v === undefined || v === "" ? "—" : String(v));
+    const licenseNo = r._id.toString().slice(-8).toUpperCase();
 
-    doc.fillColor("#003366").fontSize(13)
-      .text("THE FEDERAL REPUBLIC OF SOMALIA", 20, 12);
+    // ===== BACKGROUND (soft card) =====
+    doc.rect(0, 0, W, H).fill("#EAF6FF");
+    doc.save();
+    doc.fillColor("#CFE9F6").rect(0, H * 0.45, W, H * 0.25).fill();
+    doc.restore();
 
-    doc.fontSize(11).text("DRIVING LICENCE", 20, 30);
+    // subtle pattern circles
+    doc.save();
+    doc.fillColor("#D9EEFA").circle(120, 90, 90).fill();
+    doc.fillColor("#DFF5EA").circle(520, 110, 110).fill();
+    doc.restore();
 
+    // main card border
+    doc.save();
+    doc.roundedRect(14, 14, W - 28, H - 28, 18).lineWidth(1).stroke("#B8D7EA");
+    doc.restore();
+
+    // ===== HEADER: emblem + titles =====
+    const pad = 26;
+    const headerY = 28;
+
+    // emblem box
+    doc.save();
+    doc.roundedRect(pad, headerY, 46, 46, 14).fillAndStroke("#EAF2FF", "#BBD2F3");
+    doc.restore();
+
+    // simple emblem icon
+    doc.save();
+    doc.lineWidth(2).strokeColor("#1E3A8A");
+    doc
+      .moveTo(pad + 23, headerY + 10)
+      .lineTo(pad + 36, headerY + 17)
+      .lineTo(pad + 36, headerY + 30)
+      .curveTo(pad + 36, headerY + 40, pad + 23, headerY + 45, pad + 23, headerY + 45)
+      .curveTo(pad + 10, headerY + 40, pad + 10, headerY + 30, pad + 10, headerY + 30)
+      .lineTo(pad + 10, headerY + 17)
+      .closePath()
+      .stroke();
+    doc.restore();
+
+    doc
+      .fillColor("#0F172A")
+      .font("Helvetica-Bold")
+      .fontSize(12)
+      .text("THE FEDERAL REPUBLIC OF SOMALIA", pad + 60, headerY + 6);
+
+    doc
+      .fillColor("#334155")
+      .font("Helvetica")
+      .fontSize(10)
+      .text("Ministry of Transport", pad + 60, headerY + 24);
+
+    // status badge
+    const badgeText =
+      r.status === "APPROVED" && r.paymentStatus === "PAID"
+        ? "VALID"
+        : r.status === "REJECTED"
+        ? "REJECTED"
+        : "PENDING";
+
+    let badgeFill = "#FEF3C7",
+      badgeStroke = "#F59E0B",
+      badgeTextColor = "#92400E";
+    if (badgeText === "VALID") {
+      badgeFill = "#DCFCE7";
+      badgeStroke = "#22C55E";
+      badgeTextColor = "#166534";
+    }
+    if (badgeText === "REJECTED") {
+      badgeFill = "#FEE2E2";
+      badgeStroke = "#EF4444";
+      badgeTextColor = "#991B1B";
+    }
+
+    const badgeW = 90;
+    const badgeH = 26;
+    const badgeX = W - pad - badgeW;
+    const badgeY = headerY + 10;
+
+    doc.save();
+    doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 13).fillAndStroke(badgeFill, badgeStroke);
+    doc
+      .fillColor(badgeTextColor)
+      .font("Helvetica-Bold")
+      .fontSize(10)
+      .text(badgeText, badgeX, badgeY + 7, { width: badgeW, align: "center" });
+    doc.restore();
+
+    // ===== TITLE ROW =====
+    const titleY = 86;
+
+    doc
+      .fillColor("#1E3A8A")
+      .font("Helvetica-Bold")
+      .fontSize(18)
+      .text("DRIVING LICENSE", pad, titleY);
+
+    // license no pill
+    const pillText = `License No: ${licenseNo}`;
+    doc.save();
+    doc.roundedRect(W - pad - 200, titleY - 2, 200, 26, 12).fillAndStroke("#FFFFFF", "#C7D2FE");
+    doc
+      .fillColor("#0F172A")
+      .font("Helvetica-Bold")
+      .fontSize(10)
+      .text(pillText, W - pad - 200, titleY + 6, { width: 200, align: "center" });
+    doc.restore();
+
+    // ===== MAIN LAYOUT =====
+    const mainY = 122;
+    const leftX = pad;
+    const photoW = 170;
+    const photoH = 165;
+
+    // Photo frame
+    doc.save();
+    doc.roundedRect(leftX, mainY, photoW, photoH, 16).fillAndStroke("#FFFFFF", "#B8D7EA");
+    doc.restore();
+
+    // Put image if exists
     if (r.image) {
       const imgPath = path.join(process.cwd(), r.image.replace("/uploads/", "uploads/"));
       if (fs.existsSync(imgPath)) {
-        doc.image(imgPath, 20, 55, { width: 70, height: 90 });
+        // clip inside rounded rect
+        doc.save();
+        doc.roundedRect(leftX, mainY, photoW, photoH, 16).clip();
+        doc.image(imgPath, leftX, mainY, { width: photoW, height: photoH });
+        doc.restore();
+      } else {
+        doc
+          .fillColor("#64748B")
+          .font("Helvetica-Bold")
+          .fontSize(11)
+          .text("PHOTO", leftX, mainY + photoH / 2 - 6, { width: photoW, align: "center" });
       }
+    } else {
+      doc
+        .fillColor("#64748B")
+        .font("Helvetica-Bold")
+        .fontSize(11)
+        .text("PHOTO", leftX, mainY + photoH / 2 - 6, { width: photoW, align: "center" });
     }
 
-    doc.fillColor("#000").fontSize(9);
-    let y = 55;
-    const x = 110;
+    // Details box
+    const detailsX = leftX + photoW + 16;
+    const detailsW = W - pad - detailsX;
+    const detailsH = photoH;
 
-    doc.text("Names", x, y).text(r.fullName, x, y + 12);
-    y += 28;
-    doc.text("Date of Birth", x, y).text(String(r.yearOfBirth), x, y + 12);
-    y += 28;
-    doc.text("Place of Birth", x, y).text(r.placeOfBirth, x, y + 12);
-    y += 28;
-    doc.text("Vehicle", x, y).text(r.vehicleName, x, y + 12);
+    doc.save();
+    doc.roundedRect(detailsX, mainY, detailsW, detailsH, 16).fillAndStroke("#FFFFFF", "#B8D7EA");
+    doc.restore();
+
+    // detail rows
+    const rows = [
+      ["Full Name", safe(r.fullName)],
+      ["Year of Birth", safe(r.yearOfBirth)],
+      ["Place of Birth", safe(r.placeOfBirth)],
+      ["Vehicle", safe(r.vehicleName)],
+      ["Category", safe(r.vehicleType || "A1")],
+    ];
+
+    let ry = mainY + 14;
+    const keyX = detailsX + 14;
+    const valX = detailsX + 150;
+
+    rows.forEach((row, i) => {
+      doc
+        .fillColor("#475569")
+        .font("Helvetica-Bold")
+        .fontSize(10)
+        .text(row[0], keyX, ry);
+
+      doc
+        .fillColor("#0F172A")
+        .font("Helvetica-Bold")
+        .fontSize(11)
+        .text(String(row[1]), valX, ry);
+
+      // dashed divider except last
+      if (i !== rows.length - 1) {
+        const lineY = ry + 22;
+        doc.save();
+        doc.strokeColor("#CBD5E1").dash(3, { space: 3 });
+        doc.moveTo(detailsX + 14, lineY).lineTo(detailsX + detailsW - 14, lineY).stroke();
+        doc.undash();
+        doc.restore();
+      }
+
+      ry += 30;
+    });
+
+    // ===== FOOTER =====
+    const footY = mainY + photoH + 18;
+
+    doc
+      .fillColor("#334155")
+      .font("Helvetica-Bold")
+      .fontSize(10)
+      .text("Issued by Ministry of Transport", pad, footY);
+
+    doc
+      .fillColor("#64748B")
+      .font("Helvetica")
+      .fontSize(9)
+      .text(`Payment: ${safe(r.paymentStatus)}`, pad, footY + 14);
+
+    // QR placeholder
+    const qrSize = 74;
+    doc.save();
+    doc.roundedRect(W - pad - qrSize, footY - 6, qrSize, qrSize, 14).fillAndStroke("#FFFFFF", "#B8D7EA");
+    doc
+      .fillColor("#94A3B8")
+      .font("Helvetica-Bold")
+      .fontSize(9)
+      .text("QR\nVERIFY", W - pad - qrSize, footY + 18, { width: qrSize, align: "center" });
+    doc.restore();
 
     doc.end();
   } catch (err) {
