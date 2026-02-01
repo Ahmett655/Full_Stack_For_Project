@@ -1,25 +1,30 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
-type User = { _id: string; email: string; name?: string; role: "user" | "admin" };
-
-type AuthCtx = {
-  token: string | null;
-  user: User | null;
-  setAuth: (token: string, user: User) => void;
-  logout: () => void;
-  isAuthed: boolean;
+type User = {
+  _id: string;
+  name: string;
+  email: string;
+  role: "user" | "admin";
 };
 
-const Ctx = createContext<AuthCtx | null>(null);
+type AuthContextType = {
+  token: string | null;
+  user: User | null;
+  login: (token: string, user: User) => void;
+  logout: () => void;
+};
+
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
 
-  // ✅ load from localStorage on refresh
+  // ✅ Load from localStorage on refresh
   useEffect(() => {
     const t = localStorage.getItem("token");
     const u = localStorage.getItem("user");
+
     if (t && u) {
       setToken(t);
       try {
@@ -30,30 +35,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const setAuth = (t: string, u: User) => {
-    setToken(t);
-    setUser(u);
+  const login = (t: string, u: User) => {
     localStorage.setItem("token", t);
     localStorage.setItem("user", JSON.stringify(u));
+    setToken(t);
+    setUser(u);
   };
 
   const logout = () => {
-    setToken(null);
-    setUser(null);
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    setToken(null);
+    setUser(null);
   };
 
-  const value = useMemo(
-    () => ({ token, user, setAuth, logout, isAuthed: !!token }),
-    [token, user]
+  return (
+    <AuthContext.Provider value={{ token, user, login, logout }}>
+      {children}
+    </AuthContext.Provider>
   );
-
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export function useAuth() {
-  const v = useContext(Ctx);
-  if (!v) throw new Error("useAuth must be used inside <AuthProvider>");
-  return v;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  return ctx;
 }
